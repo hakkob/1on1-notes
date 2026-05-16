@@ -80,13 +80,14 @@ function handleLoad(ss) {
   const sSheet = getSheet(ss, 'Sessions');
   const aSheet = getSheet(ss, 'ActionItems');
 
-  if (pSheet.getLastRow() === 0) pSheet.appendRow(['id','name','role','company','cadence','created_at']);
+  if (pSheet.getLastRow() === 0) pSheet.appendRow(['id','name','role','company','cadence','created_at','team']);
   if (sSheet.getLastRow() === 0) sSheet.appendRow(['id','person_id','date','went_well','to_improve','private_notes','next_agenda','created_at']);
   if (aSheet.getLastRow() === 0) aSheet.appendRow(['id','session_id','person_id','text','status','created_at']);
 
   const people = sheetRows(pSheet).map(r => ({
     id: String(r[0]), name: String(r[1]), role: String(r[2] || ''),
-    company: String(r[3] || ''), cadence: String(r[4] || 'Weekly'), createdAt: String(r[5] || '')
+    company: String(r[3] || ''), cadence: String(r[4] || 'Weekly'), createdAt: String(r[5] || ''),
+    team: String(r[6] || '')
   }));
 
   const sessions = sheetRows(sSheet).map(r => ({
@@ -108,9 +109,9 @@ function handleLoad(ss) {
 function handleSavePerson(ss, data) {
   const sheet  = getSheet(ss, 'People');
   if (!data.id) data.id = uid('p');
-  const row    = [data.id, data.name, data.role || '', data.company || '', data.cadence || 'Weekly', new Date().toISOString()];
+  const row    = [data.id, data.name, data.role || '', data.company || '', data.cadence || 'Weekly', new Date().toISOString(), data.team || ''];
   const rowNum = findRow(sheet, data.id);
-  if (rowNum > 0) sheet.getRange(rowNum, 1, 1, 6).setValues([row]);
+  if (rowNum > 0) sheet.getRange(rowNum, 1, 1, 7).setValues([row]);
   else sheet.appendRow(row);
   return { ok: true, id: data.id };
 }
@@ -121,7 +122,7 @@ function handleDeletePerson(ss, id) {
   const aSheet = getSheet(ss, 'ActionItems');
 
   const pRow = findRow(pSheet, id);
-  if (pRow > 0) pSheet.getRange(pRow, 1, 1, 6).clearContent();
+  if (pRow > 0) pSheet.getRange(pRow, 1, 1, 7).clearContent();
 
   const sVals = sSheet.getDataRange().getValues();
   for (let i = sVals.length - 1; i >= 1; i--) {

@@ -230,13 +230,20 @@
         <input type="text" id="pm-company" placeholder="Acme">
       </div>
     </div>
-    <div class="form-group">
-      <label>Cadence</label>
-      <select id="pm-cadence">
-        <option>Weekly</option>
-        <option>Bi-weekly</option>
-        <option>Monthly</option>
-      </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <div class="form-group">
+        <label>Team</label>
+        <input type="text" id="pm-team" placeholder="e.g. QA, Engineering" list="team-suggestions">
+        <datalist id="team-suggestions"></datalist>
+      </div>
+      <div class="form-group">
+        <label>Cadence</label>
+        <select id="pm-cadence">
+          <option>Weekly</option>
+          <option>Bi-weekly</option>
+          <option>Monthly</option>
+        </select>
+      </div>
     </div>
     <div style="display:flex;gap:.75rem;margin-top:.5rem">
       <button class="btn btn-secondary" style="flex:1" onclick="closePersonModal()">Cancel</button>
@@ -464,35 +471,65 @@ function syncBadgeHTML() {
 }
 
 // ── HOME ─────────────────────────────────────────────────────
+function personCardHTML(p) {
+  const last  = lastSessionFor(p.id);
+  const over  = isOverdue(p);
+  const open  = openItemsFor(p.id);
+  const color = avatarColor(p.id);
+  return `
+    <div class="card person-card" onclick="navigate('profile',{personId:'${esc(p.id)}'})">
+      <div class="avatar" style="background:${color}20;color:${color}">${esc(initials(p.name))}</div>
+      <div class="person-info">
+        <div class="person-name">${esc(p.name)}</div>
+        <div class="person-sub">${[p.role, p.company].filter(Boolean).map(esc).join(' · ')}</div>
+      </div>
+      <div class="person-right">
+        <div class="person-time">${last ? timeAgo(last.date) : 'never'}</div>
+        ${over ? '<div class="badge-overdue">OVERDUE</div>' : ''}
+      </div>
+      ${open.length ? `<div class="person-footer">● ${open.length} open item${open.length > 1 ? 's' : ''}</div>` : ''}
+    </div>`;
+}
+
 function renderHome() {
   setTopbar('', '1-ON-1 NOTES', syncBadgeHTML() + iconBtn("openPersonModal(null)", SVG_PLUS));
+  if (!people.length) {
+    document.getElementById('view-home').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">👥</div>
+        <div class="empty-text">No people yet.<br>Tap + to add your first 1-on-1.</div>
+      </div>`;
+    return;
+  }
+
   const sorted = [...people].sort((a,b) => {
     const la = lastSessionFor(a.id), lb = lastSessionFor(b.id);
     return (lb ? new Date(lb.date) : new Date(0)) - (la ? new Date(la.date) : new Date(0));
   });
-  document.getElementById('view-home').innerHTML = sorted.length ? sorted.map(p => {
-    const last   = lastSessionFor(p.id);
-    const over   = isOverdue(p);
-    const open   = openItemsFor(p.id);
-    const color  = avatarColor(p.id);
-    return `
-      <div class="card person-card" onclick="navigate('profile',{personId:'${esc(p.id)}'})">
-        <div class="avatar" style="background:${color}20;color:${color}">${esc(initials(p.name))}</div>
-        <div class="person-info">
-          <div class="person-name">${esc(p.name)}</div>
-          <div class="person-sub">${[p.role, p.company].filter(Boolean).map(esc).join(' · ')}</div>
-        </div>
-        <div class="person-right">
-          <div class="person-time">${last ? timeAgo(last.date) : 'never'}</div>
-          ${over ? '<div class="badge-overdue">OVERDUE</div>' : ''}
-        </div>
-        ${open.length ? `<div class="person-footer">● ${open.length} open item${open.length > 1 ? 's' : ''}</div>` : ''}
-      </div>`;
-  }).join('') : `
-    <div class="empty-state">
-      <div class="empty-icon">👥</div>
-      <div class="empty-text">No people yet.<br>Tap + to add your first 1-on-1.</div>
-    </div>`;
+
+  // Group by team; ungrouped goes last
+  const groups = {};
+  sorted.forEach(p => {
+    const key = p.team || '';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
+  });
+  const teamNames = Object.keys(groups).sort((a,b) => {
+    if (!a && b) return 1;
+    if (a && !b) return -1;
+    return a.localeCompare(b);
+  });
+
+  const hasTeams = teamNames.some(t => t !== '');
+  document.getElementById('view-home').innerHTML = teamNames.map(team => {
+    const header = hasTeams
+      ? `<div class="section-header" style="margin-top:${team === teamNames[0] ? '0' : '.5rem'}">
+           <span class="section-title">${team ? esc(team) : 'Ungrouped'}</span>
+           <span style="font-size:.7rem;color:var(--muted)">${groups[team].length}</span>
+         </div>`
+      : '';
+    return header + groups[team].map(personCardHTML).join('');
+  }).join('');
 }
 
 // ── PROFILE ──────────────────────────────────────────────────
@@ -545,6 +582,7 @@ function renderProfile() {
         </div>
       </div>
       <div class="profile-pills">
+        ${p.team ? `<span class="pill" style="border-color:rgba(107,255,158,.3);color:var(--green);background:rgba(107,255,158,.08)">${esc(p.team)}</span>` : ''}
         <span class="pill pill-cadence">${esc(p.cadence)}</span>
         <span class="pill pill-lastmet">${last ? 'Last met ' + formatDate(last.date) : 'Never met'}</span>
         ${over ? '<span class="pill pill-overdue">OVERDUE</span>' : ''}
@@ -859,8 +897,12 @@ function openPersonModal(id) {
   document.getElementById('pm-name').value             = p ? p.name    : '';
   document.getElementById('pm-role').value             = p ? p.role    : '';
   document.getElementById('pm-company').value          = p ? p.company : '';
+  document.getElementById('pm-team').value             = p ? p.team    : '';
   document.getElementById('pm-cadence').value          = p ? p.cadence : 'Weekly';
   document.getElementById('pm-delete').style.display   = p ? 'block' : 'none';
+  // Populate team autocomplete with existing teams
+  const teams = [...new Set(people.map(x => x.team).filter(Boolean))].sort();
+  document.getElementById('team-suggestions').innerHTML = teams.map(t => `<option value="${esc(t)}">`).join('');
   document.getElementById('modal-person').classList.add('open');
   setTimeout(() => document.getElementById('pm-name').focus(), 150);
 }
@@ -869,12 +911,13 @@ async function savePersonModal() {
   const name    = document.getElementById('pm-name').value.trim();
   const role    = document.getElementById('pm-role').value.trim();
   const company = document.getElementById('pm-company').value.trim();
+  const team    = document.getElementById('pm-team').value.trim();
   const cadence = document.getElementById('pm-cadence').value;
   if (!name) { toast('Name is required'); return; }
   closePersonModal();
   setSyncState('syncing');
   try {
-    const data   = { id: editingPersonId || null, name, role, company, cadence };
+    const data   = { id: editingPersonId || null, name, role, company, cadence, team };
     const result = await api('savePerson', { data });
     await reloadData(); setSyncState('synced');
     toast(editingPersonId ? 'Person updated' : name + ' added');
