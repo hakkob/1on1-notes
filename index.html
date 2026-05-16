@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>1-on-1 Notes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0e0e11;
+      --surface: #16161c;
+      --surface2: #1e1e27;
+      --border: #2a2a38;
+      --accent: #ff8800;
+      --accent-dim: rgba(255,136,0,0.15);
+      --accent2: #ff4d4d;
+      --accent3: #42b8ff;
+      --green: #6bff9e;
+      --text: #f0f0f4;
+      --muted: #7a7a94;
+    }
+    body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; }
+    h1,h2,h3,.syne { font-family:'Syne',sans-serif; }
+
+    /* NAV */
+    nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); display:flex; justify-content:space-around; padding:.5rem 0 calc(.5rem + env(safe-area-inset-bottom)); z-index:100; }
+    .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:.25rem; padding:.5rem; background:none; border:none; color:var(--muted); cursor:pointer; font-family:'DM Mono',monospace; font-size:.65rem; transition:color .2s; }
+    .nav-btn.active { color:var(--accent); }
+    .nav-btn svg { width:22px; height:22px; }
+
+    /* TOPBAR */
+    .topbar { position:fixed; top:0; left:0; right:0; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:.75rem 1rem; z-index:100; min-height:52px; }
+    .topbar-center { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; letter-spacing:.04em; }
+    .topbar-btn { background:none; border:none; color:var(--text); cursor:pointer; padding:.35rem; border-radius:6px; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+    .topbar-btn:hover { background:var(--surface2); }
+    .sync-badge { display:flex; align-items:center; gap:.4rem; font-size:.7rem; color:var(--muted); cursor:pointer; padding:.25rem .5rem; border-radius:20px; border:1px solid var(--border); }
+    .sync-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+
+    /* MAIN */
+    main { padding:4.5rem 1rem 5.5rem; max-width:600px; margin:0 auto; }
+    .view { display:none; }
+    .view.active { display:block; }
+
+    /* CARDS */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1rem; margin-bottom:.75rem; }
+
+    /* BUTTONS */
+    .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem 1rem; border-radius:8px; border:none; cursor:pointer; font-family:'DM Mono',monospace; font-size:.8rem; font-weight:500; transition:opacity .2s, transform .1s; }
+    .btn:active { transform:scale(.97); }
+    .btn-primary { background:var(--accent); color:#000; font-weight:600; }
+    .btn-secondary { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+    .btn-full { width:100%; justify-content:center; }
+
+    /* FORM */
+    label { display:block; font-size:.65rem; color:var(--muted); margin-bottom:.35rem; letter-spacing:.07em; text-transform:uppercase; }
+    input, select, textarea { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:.6rem .75rem; color:var(--text); font-family:'DM Mono',monospace; font-size:.875rem; outline:none; transition:border-color .2s; }
+    input:focus, select:focus, textarea:focus { border-color:var(--accent); }
+    input[type=search]::-webkit-search-cancel-button { filter:invert(1) opacity(.4); }
+    select option { background:var(--surface2); }
+    textarea { resize:vertical; min-height:80px; }
+
+    /* MODAL */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; align-items:flex-end; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:var(--surface); border-radius:20px 20px 0 0; padding:1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom)); width:100%; max-width:600px; max-height:90vh; overflow-y:auto; animation:slideUp .25s ease; }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto .875rem; }
+    .modal-title { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:600; margin-bottom:1.1rem; }
+    .form-group { margin-bottom:.875rem; }
+
+    /* SECTION HEADER */
+    .section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem; }
+    .section-title { font-family:'Syne',sans-serif; font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+
+    /* AVATAR */
+    .avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:700; font-size:.85rem; flex-shrink:0; }
+
+    /* PERSON CARD */
+    .person-card { display:flex; align-items:center; gap:.875rem; cursor:pointer; transition:border-color .2s; flex-wrap:wrap; }
+    .person-card:hover { border-color:var(--accent); }
+    .person-info { flex:1; min-width:0; }
+    .person-name { font-family:'Syne',sans-serif; font-size:.975rem; font-weight:600; }
+    .person-sub { font-size:.7rem; color:var(--muted); margin-top:.15rem; }
+    .person-right { display:flex; flex-direction:column; align-items:flex-end; gap:.3rem; flex-shrink:0; }
+    .person-time { font-size:.7rem; color:var(--muted); }
+    .person-footer { width:100%; padding-top:.6rem; border-top:1px solid var(--border); font-size:.7rem; color:var(--accent); }
+
+    /* BADGES */
+    .badge-overdue { display:inline-flex; padding:.15rem .5rem; border-radius:20px; font-size:.6rem; background:rgba(255,77,77,.15); color:var(--accent2); border:1px solid rgba(255,77,77,.3); font-weight:600; letter-spacing:.05em; }
+
+    /* PROFILE HEADER */
+    .profile-header { padding:1.1rem; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:.875rem; }
+    .profile-name { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:700; }
+    .profile-sub { font-size:.78rem; color:var(--muted); margin-top:.25rem; }
+    .profile-pills { display:flex; gap:.4rem; margin-top:.7rem; flex-wrap:wrap; }
+    .pill { display:inline-flex; padding:.2rem .6rem; border-radius:20px; font-size:.63rem; border:1px solid; }
+    .pill-cadence { border-color:rgba(66,184,255,.3); color:var(--accent3); background:rgba(66,184,255,.1); }
+    .pill-lastmet { border-color:var(--border); color:var(--muted); background:var(--surface2); }
+    .pill-overdue { border-color:rgba(255,77,77,.3); color:var(--accent2); background:rgba(255,77,77,.1); }
+
+    /* SESSION LIST */
+    .session-row { display:flex; justify-content:space-between; align-items:flex-start; padding:.7rem 0; border-bottom:1px solid var(--border); cursor:pointer; transition:opacity .15s; }
+    .session-row:last-child { border-bottom:none; }
+    .session-row:hover { opacity:.8; }
+    .session-date { font-family:'Syne',sans-serif; font-size:.875rem; font-weight:600; }
+    .session-preview { font-size:.72rem; color:var(--muted); margin-top:.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:260px; }
+
+    /* SESSION SECTIONS */
+    .session-section { margin-bottom:1.1rem; padding-left:.875rem; border-left:3px solid var(--border); }
+    .session-section label { font-size:.63rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:.4rem; display:flex; align-items:center; gap:.35rem; }
+    .section-green  { border-left-color:var(--green); }
+    .section-red    { border-left-color:var(--accent2); }
+    .section-orange { border-left-color:var(--accent); }
+    .section-blue   { border-left-color:var(--accent3); }
+    .section-content { font-size:.875rem; line-height:1.65; color:var(--text); white-space:pre-wrap; }
+
+    /* ACTION ITEMS */
+    .action-item-row { display:flex; align-items:flex-start; gap:.6rem; padding:.45rem 0; border-bottom:1px solid var(--border); }
+    .action-item-row:last-of-type { border-bottom:none; }
+    .check-btn { width:20px; height:20px; border-radius:4px; border:1.5px solid var(--border); background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s; margin-top:2px; color:transparent; }
+    .check-btn.done { background:var(--green); border-color:var(--green); color:#000; }
+    .item-text { flex:1; font-size:.85rem; line-height:1.4; }
+    .item-text.done { text-decoration:line-through; color:var(--muted); }
+    .item-actions { display:flex; gap:.2rem; flex-shrink:0; }
+    .item-action-btn { background:none; border:none; color:var(--muted); cursor:pointer; padding:.2rem .3rem; border-radius:4px; font-size:.75rem; transition:color .15s; }
+    .item-action-btn:hover { color:var(--text); }
+
+    /* ADD ITEM ROW */
+    .add-item-row { display:flex; gap:.5rem; margin-top:.75rem; }
+    .add-item-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem; color:var(--text); font-family:'DM Mono',monospace; font-size:.8rem; outline:none; min-width:0; transition:border-color .2s; }
+    .add-item-input:focus { border-color:var(--accent); }
+    .add-item-btn { background:var(--accent); color:#000; border:none; border-radius:8px; padding:.5rem .9rem; cursor:pointer; font-weight:700; font-size:1rem; flex-shrink:0; }
+
+    /* CARRY FORWARD */
+    .carryforward { background:var(--surface2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:.6rem .875rem; margin-bottom:.875rem; font-size:.78rem; color:var(--muted); cursor:pointer; transition:border-color .2s; line-height:1.5; }
+    .carryforward:hover { border-color:var(--accent); }
+    .carryforward strong { color:var(--accent); }
+
+    /* SEARCH */
+    .search-result { padding:.875rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:.6rem; cursor:pointer; transition:border-color .15s; }
+    .search-result:hover { border-color:var(--accent); }
+    .result-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:.25rem; }
+    .result-name { font-family:'Syne',sans-serif; font-size:.9rem; font-weight:600; }
+    .result-date { font-size:.68rem; color:var(--muted); flex-shrink:0; margin-left:.5rem; }
+    .result-snippet { font-size:.78rem; color:var(--muted); line-height:1.5; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align:center; padding:3rem 1rem; color:var(--muted); }
+    .empty-icon { font-size:2.5rem; margin-bottom:.75rem; opacity:.4; }
+    .empty-text { font-size:.875rem; line-height:1.6; }
+
+    /* MISC */
+    .divider { height:1px; background:var(--border); margin:1rem 0; }
+    .spinner { width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .loading { display:flex; align-items:center; justify-content:center; padding:3rem; color:var(--muted); font-size:.8rem; gap:.5rem; }
+    .toast { position:fixed; bottom:5.5rem; left:50%; transform:translateX(-50%) translateY(10px); background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:.5rem 1rem; font-size:.8rem; opacity:0; transition:opacity .3s, transform .3s; pointer-events:none; z-index:300; white-space:nowrap; max-width:90vw; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .auth-screen { display:none; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:2rem; gap:1.5rem; text-align:center; }
+    .auth-logo { font-family:'Syne',sans-serif; font-size:2rem; font-weight:700; color:var(--accent); margin-bottom:.25rem; }
+    .auth-sub { color:var(--muted); font-size:.875rem; max-width:280px; line-height:1.6; }
+    .tag-pill { display:inline-flex; padding:.12rem .45rem; border-radius:20px; font-size:.6rem; background:rgba(66,184,255,.1); color:var(--accent3); border:1px solid rgba(66,184,255,.25); flex-shrink:0; }
+  </style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="auth-screen">
+  <div style="font-size:3rem">🗒️</div>
+  <div>
+    <div class="auth-logo">1-on-1 Notes</div>
+    <p class="auth-sub">Keep running notes for every recurring 1-on-1. Searchable history, action items, carry-forward agenda.</p>
+  </div>
+  <button class="btn btn-primary" onclick="signIn()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+    Sign in with Google
+  </button>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+
+  <div class="topbar" id="topbar"></div>
+
+  <main>
+    <div id="view-home"           class="view"></div>
+    <div id="view-profile"        class="view"></div>
+    <div id="view-session-form"   class="view"></div>
+    <div id="view-session-detail" class="view"></div>
+    <div id="view-search"         class="view"></div>
+    <div id="view-thisweek"       class="view"></div>
+  </main>
+
+  <nav>
+    <button class="nav-btn active" id="nav-home" onclick="navigate('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      People
+    </button>
+    <button class="nav-btn" id="nav-search" onclick="navigate('search')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Search
+    </button>
+    <button class="nav-btn" id="nav-thisweek" onclick="navigate('thisweek')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      This Week
+    </button>
+  </nav>
+
+</div>
+
+<!-- MODAL: Add / Edit Person -->
+<div class="modal-overlay" id="modal-person" onclick="if(event.target===this)closePersonModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="pm-title">New Person</div>
+    <div class="form-group">
+      <label>Name *</label>
+      <input type="text" id="pm-name" placeholder="Sarah Chen">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <div class="form-group">
+        <label>Role</label>
+        <input type="text" id="pm-role" placeholder="Eng Manager">
+      </div>
+      <div class="form-group">
+        <label>Company</label>
+        <input type="text" id="pm-company" placeholder="Acme">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Cadence</label>
+      <select id="pm-cadence">
+        <option>Weekly</option>
+        <option>Bi-weekly</option>
+        <option>Monthly</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:.5rem">
+      <button class="btn btn-secondary" style="flex:1" onclick="closePersonModal()">Cancel</button>
+      <button class="btn btn-primary"   style="flex:2" onclick="savePersonModal()">Save</button>
+    </div>
+    <div id="pm-delete" style="display:none;margin-top:.875rem">
+      <button class="btn btn-full" style="background:transparent;color:var(--accent2);border:1px solid rgba(255,77,77,.3)" onclick="confirmDeletePerson()">Delete Person & All Sessions</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Confirm -->
+<div class="modal-overlay" id="modal-confirm" onclick="if(event.target===this)closeConfirm()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <p id="confirm-msg" style="font-size:.9rem;line-height:1.6;margin-bottom:1.25rem;color:var(--text)"></p>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-full" style="flex:2;background:var(--accent2);color:#fff" onclick="doConfirm()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────
+const CLIENT_ID  = '1016619293334-ch6q469ml4n0taasgb4eo7o9tk1mkegk.apps.googleusercontent.com';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxuhyIf7y1Q47zjg9xic0319vsGIRJBVqI1TGujsDG6_YdBQCO7jgo2eLrgXE1af94pOw/exec';
+const TOKEN_KEY  = '1on1_gtoken';
+const SCOPES     = 'https://www.googleapis.com/auth/userinfo.email';
+
+// ── STATE ───────────────────────────────────────────────────
+let accessToken      = null;
+let tokenClient      = null;
+let people           = [];
+let sessions         = [];
+let actionItems      = [];
+let currentView      = 'home';
+let currentPersonId  = null;
+let currentSessionId = null;
+let editingSessionId = null;
+let editingPersonId  = null;
+let confirmCallback  = null;
+let searchTimer      = null;
+let sfCarryText      = '';
+
+// ── AVATAR ──────────────────────────────────────────────────
+const COLORS = ['#ff8800','#42b8ff','#6bff9e','#ff4d4d','#c084fc','#fb923c','#f472b6'];
+function avatarColor(id) {
+  const n = String(id).split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+  return COLORS[n % COLORS.length];
+}
+function initials(name) {
+  return (name || '?').split(' ').slice(0,2).map(w => (w[0] || '')).join('').toUpperCase();
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function highlight(text, q) {
+  const e = esc(text);
+  if (!q) return e;
+  try {
+    const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+    return e.replace(re, m => `<mark style="background:rgba(255,136,0,.25);color:var(--accent);border-radius:2px;padding:0 1px">${m}</mark>`);
+  } catch { return e; }
+}
+function today() { return new Date().toISOString().slice(0,10); }
+function daysSince(d) {
+  if (!d) return Infinity;
+  return Math.floor((Date.now() - new Date(d + 'T12:00:00')) / 86400000);
+}
+function formatDate(d) {
+  if (!d) return '—';
+  try { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+  catch { return d; }
+}
+function timeAgo(d) {
+  const n = daysSince(d);
+  if (n === 0) return 'today';
+  if (n === 1) return '1d ago';
+  if (n < 30)  return n + 'd ago';
+  if (n < 365) return Math.floor(n/30) + 'mo ago';
+  return Math.floor(n/365) + 'y ago';
+}
+
+// ── DATA HELPERS ─────────────────────────────────────────────
+function sessionsFor(pid) {
+  return sessions.filter(s => s.personId === pid).sort((a,b) => b.date.localeCompare(a.date));
+}
+function lastSessionFor(pid) { return sessionsFor(pid)[0] || null; }
+function openItemsFor(pid)    { return actionItems.filter(a => a.personId === pid && a.status === 'open'); }
+function itemsForSession(sid) { return actionItems.filter(a => a.sessionId === sid); }
+function cadenceDays(c)       { return c === 'Bi-weekly' ? 14 : c === 'Monthly' ? 30 : 7; }
+function isOverdue(p) {
+  const last = lastSessionFor(p.id);
+  if (!last) return true;
+  return daysSince(last.date) >= cadenceDays(p.cadence);
+}
+
+// ── AUTH ─────────────────────────────────────────────────────
+function initGIS() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback(resp) {
+      if (resp.error) { setSyncState('error'); return; }
+      accessToken = resp.access_token;
+      localStorage.setItem(TOKEN_KEY, accessToken);
+      onSignedIn();
+    }
+  });
+  const stored = localStorage.getItem(TOKEN_KEY);
+  if (stored) { accessToken = stored; onSignedIn(); }
+  else showAuthScreen();
+}
+function signIn()  { tokenClient.requestAccessToken({ prompt: 'select_account' }); }
+function signOut() {
+  accessToken = null; localStorage.removeItem(TOKEN_KEY);
+  people = []; sessions = []; actionItems = [];
+  showAuthScreen(); setSyncState('offline');
+}
+function syncBadgeClick() {
+  if (!accessToken) { signIn(); return; }
+  if (confirm('Sign out?')) signOut();
+}
+function showAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+function setSyncState(s) {
+  const dot   = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  if (!dot || !label) return;
+  const cs = { syncing:'#ffd86b', synced:'#6bff9e', error:'var(--accent2)', offline:'var(--muted)' };
+  const ls = { syncing:'syncing…', synced:'synced', error:'sign in again', offline:'offline' };
+  dot.style.background = cs[s] || cs.offline;
+  label.textContent    = ls[s] || s;
+}
+async function onSignedIn() {
+  showApp();
+  setSyncState('syncing');
+  try {
+    await reloadData();
+    setSyncState('synced');
+    renderView();
+  } catch(e) {
+    console.error(e);
+    setSyncState('error');
+    if (String(e).includes('Unauthorized')) {
+      localStorage.removeItem(TOKEN_KEY); accessToken = null; showAuthScreen();
+    }
+  }
+}
+
+// ── API ──────────────────────────────────────────────────────
+async function api(action, extra = {}) {
+  const r = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ token: accessToken, action, ...extra })
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const result = await r.json();
+  if (result.error) throw new Error(result.error);
+  return result;
+}
+async function reloadData() {
+  const d = await api('load');
+  people      = d.people      || [];
+  sessions    = d.sessions    || [];
+  actionItems = d.actionItems || [];
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function navigate(view, opts = {}) {
+  if (opts.personId         !== undefined) currentPersonId  = opts.personId;
+  if (opts.sessionId        !== undefined) currentSessionId = opts.sessionId;
+  if (opts.editingSessionId !== undefined) editingSessionId = opts.editingSessionId;
+  currentView = view;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const inPeopleTree = ['home','profile','session-form','session-detail'].includes(view);
+  document.getElementById('nav-home').classList.toggle('active', inPeopleTree);
+  document.getElementById('nav-search').classList.toggle('active', view === 'search');
+  document.getElementById('nav-thisweek').classList.toggle('active', view === 'thisweek');
+  renderView();
+  window.scrollTo(0, 0);
+}
+function renderView() {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById('view-' + currentView);
+  if (el) el.classList.add('active');
+  switch(currentView) {
+    case 'home':           renderHome();          break;
+    case 'profile':        renderProfile();       break;
+    case 'session-form':   renderSessionForm();   break;
+    case 'session-detail': renderSessionDetail(); break;
+    case 'search':         renderSearch();        break;
+    case 'thisweek':       renderThisWeek();      break;
+  }
+}
+
+// ── TOPBAR HELPERS ───────────────────────────────────────────
+function setTopbar(left, center, right) {
+  document.getElementById('topbar').innerHTML = `
+    <div style="min-width:90px;display:flex;gap:.25rem;align-items:center">${left||''}</div>
+    <div class="topbar-center">${center||''}</div>
+    <div style="min-width:90px;display:flex;gap:.25rem;align-items:center;justify-content:flex-end">${right||''}</div>
+  `;
+}
+const SVG_BACK = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>`;
+const SVG_EDIT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+const SVG_PLUS = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const SVG_CHECK = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+function backBtn(fn)  { return `<button class="topbar-btn" onclick="${fn}">${SVG_BACK}</button>`; }
+function iconBtn(fn, svg) { return `<button class="topbar-btn" onclick="${fn}">${svg}</button>`; }
+function syncBadgeHTML() {
+  return `<div class="sync-badge" onclick="syncBadgeClick()"><div class="sync-dot" id="sync-dot" style="background:#6bff9e"></div><span id="sync-label">synced</span></div>`;
+}
+
+// ── HOME ─────────────────────────────────────────────────────
+function renderHome() {
+  setTopbar('', '1-ON-1 NOTES', syncBadgeHTML() + iconBtn("openPersonModal(null)", SVG_PLUS));
+  const sorted = [...people].sort((a,b) => {
+    const la = lastSessionFor(a.id), lb = lastSessionFor(b.id);
+    return (lb ? new Date(lb.date) : new Date(0)) - (la ? new Date(la.date) : new Date(0));
+  });
+  document.getElementById('view-home').innerHTML = sorted.length ? sorted.map(p => {
+    const last   = lastSessionFor(p.id);
+    const over   = isOverdue(p);
+    const open   = openItemsFor(p.id);
+    const color  = avatarColor(p.id);
+    return `
+      <div class="card person-card" onclick="navigate('profile',{personId:'${esc(p.id)}'})">
+        <div class="avatar" style="background:${color}20;color:${color}">${esc(initials(p.name))}</div>
+        <div class="person-info">
+          <div class="person-name">${esc(p.name)}</div>
+          <div class="person-sub">${[p.role, p.company].filter(Boolean).map(esc).join(' · ')}</div>
+        </div>
+        <div class="person-right">
+          <div class="person-time">${last ? timeAgo(last.date) : 'never'}</div>
+          ${over ? '<div class="badge-overdue">OVERDUE</div>' : ''}
+        </div>
+        ${open.length ? `<div class="person-footer">● ${open.length} open item${open.length > 1 ? 's' : ''}</div>` : ''}
+      </div>`;
+  }).join('') : `
+    <div class="empty-state">
+      <div class="empty-icon">👥</div>
+      <div class="empty-text">No people yet.<br>Tap + to add your first 1-on-1.</div>
+    </div>`;
+}
+
+// ── PROFILE ──────────────────────────────────────────────────
+function renderProfile() {
+  const p = people.find(x => x.id === currentPersonId);
+  if (!p) { navigate('home'); return; }
+  const color    = avatarColor(p.id);
+  const last     = lastSessionFor(p.id);
+  const open     = openItemsFor(p.id);
+  const sessList = sessionsFor(p.id);
+  const over     = isOverdue(p);
+
+  setTopbar(
+    backBtn("navigate('home')"),
+    esc(p.name),
+    iconBtn(`openPersonModal('${esc(p.id)}')`, SVG_EDIT)
+  );
+
+  const openItemsHtml = open.length ? open.map(item => `
+    <div class="action-item-row">
+      <button class="check-btn" onclick="toggleItem('${esc(item.id)}')">${SVG_CHECK}</button>
+      <span class="item-text">${esc(item.text)}</span>
+      <div class="item-actions">
+        <button class="item-action-btn" onclick="editItem('${esc(item.id)}')">✏</button>
+        <button class="item-action-btn" onclick="confirmDeleteItem('${esc(item.id)}')">✕</button>
+      </div>
+    </div>`).join('')
+    : `<div style="color:var(--muted);font-size:.8rem;padding:.35rem 0">No open items — nice!</div>`;
+
+  const sessionsHtml = sessList.length ? sessList.map(s => {
+    const preview = [s.wentWell, s.toImprove].find(f => f.trim()) || '—';
+    return `
+      <div class="session-row" onclick="navigate('session-detail',{sessionId:'${esc(s.id)}'})">
+        <div style="min-width:0">
+          <div class="session-date">${formatDate(s.date)}</div>
+          <div class="session-preview">${esc(preview.slice(0,80))}</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" style="flex-shrink:0;margin-top:3px"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`;
+  }).join('')
+    : `<div style="color:var(--muted);font-size:.8rem;padding:.35rem 0">No sessions yet.</div>`;
+
+  document.getElementById('view-profile').innerHTML = `
+    <div class="profile-header">
+      <div style="display:flex;align-items:center;gap:.875rem">
+        <div class="avatar" style="width:48px;height:48px;font-size:1.05rem;background:${color}20;color:${color}">${esc(initials(p.name))}</div>
+        <div>
+          <div class="profile-name">${esc(p.name)}</div>
+          <div class="profile-sub">${[p.role, p.company].filter(Boolean).map(esc).join(' · ') || '—'}</div>
+        </div>
+      </div>
+      <div class="profile-pills">
+        <span class="pill pill-cadence">${esc(p.cadence)}</span>
+        <span class="pill pill-lastmet">${last ? 'Last met ' + formatDate(last.date) : 'Never met'}</span>
+        ${over ? '<span class="pill pill-overdue">OVERDUE</span>' : ''}
+      </div>
+    </div>
+    ${open.length ? `
+    <div class="section-header"><span class="section-title">Open Action Items</span></div>
+    <div class="card" style="padding:.75rem 1rem">${openItemsHtml}</div>` : ''}
+    <div class="section-header"><span class="section-title">Past Sessions</span></div>
+    <div class="card" style="padding:.5rem 1rem">${sessionsHtml}</div>
+    <button class="btn btn-primary btn-full" style="margin-top:.875rem"
+            onclick="navigate('session-form',{editingSessionId:null})">+ New Session</button>
+  `;
+}
+
+// ── SESSION FORM ─────────────────────────────────────────────
+function renderSessionForm() {
+  const p = people.find(x => x.id === currentPersonId);
+  if (!p) { navigate('home'); return; }
+
+  const isNew = !editingSessionId;
+  const sess  = isNew ? null : sessions.find(s => s.id === editingSessionId);
+
+  if (isNew) {
+    const last = sessionsFor(currentPersonId)[0];
+    sfCarryText = (last && last.nextAgenda) ? last.nextAgenda : '';
+  }
+
+  setTopbar(
+    backBtn("navigate('profile')"),
+    isNew ? 'New Session' : 'Edit Session',
+    `<button class="topbar-btn" style="color:var(--accent);font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700" onclick="saveSessionForm()">SAVE</button>`
+  );
+
+  const carryHtml = (isNew && sfCarryText) ? `
+    <div class="carryforward" onclick="applyCF()">
+      <strong>↑ Tap to carry forward:</strong> ${esc(sfCarryText.slice(0,120))}${sfCarryText.length > 120 ? '…' : ''}
+    </div>` : '';
+
+  const actionItemsSection = isNew
+    ? `<div class="session-section section-orange">
+         <label>ACTION ITEMS <span style="font-size:.6rem;color:var(--muted)">(one per line)</span></label>
+         <textarea id="sf-items" rows="4" placeholder="Follow up on roadmap doc&#10;Schedule design review&#10;Set up intro call with new hire"></textarea>
+       </div>`
+    : `<div style="background:var(--surface2);border-radius:8px;padding:.6rem .875rem;margin-bottom:1.1rem;font-size:.78rem;color:var(--muted);border-left:3px solid var(--accent)">
+         Action items are managed in the session detail view.
+       </div>`;
+
+  document.getElementById('view-session-form').innerHTML = `
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.875rem">
+      <input type="date" id="sf-date" value="${esc(sess ? sess.date : today())}" style="flex:1">
+      <span style="font-size:.78rem;color:var(--muted);flex-shrink:0">${esc(p.name)}</span>
+    </div>
+    ${carryHtml}
+    <div class="session-section section-green">
+      <label>Went Well</label>
+      <textarea id="sf-well" rows="3" placeholder="Wins, positives, acknowledgments…">${esc(sess ? sess.wentWell : '')}</textarea>
+    </div>
+    <div class="session-section section-red">
+      <label>To Improve</label>
+      <textarea id="sf-improve" rows="3" placeholder="Friction, concerns, blockers…">${esc(sess ? sess.toImprove : '')}</textarea>
+    </div>
+    ${actionItemsSection}
+    <div class="session-section section-blue">
+      <label>Private Notes 🔒</label>
+      <textarea id="sf-private" rows="3" placeholder="Your own observations (not shared)…">${esc(sess ? sess.privateNotes : '')}</textarea>
+    </div>
+    <div class="session-section" style="border-left-color:var(--border)">
+      <label>Next Agenda</label>
+      <textarea id="sf-agenda" rows="2" placeholder="Topics to bring to the next meeting…">${esc(sess ? sess.nextAgenda : '')}</textarea>
+    </div>
+    ${!isNew ? `
+    <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <button class="btn btn-full" style="background:transparent;color:var(--accent2);border:1px solid rgba(255,77,77,.3)"
+              onclick="confirmDeleteSession('${esc(editingSessionId)}')">Delete Session</button>
+    </div>` : ''}
+  `;
+}
+
+function applyCF() {
+  const el = document.getElementById('sf-agenda');
+  if (el && sfCarryText) { el.value = sfCarryText; el.focus(); }
+}
+
+async function saveSessionForm() {
+  const date    = document.getElementById('sf-date')?.value;
+  const well    = document.getElementById('sf-well')?.value    || '';
+  const improve = document.getElementById('sf-improve')?.value || '';
+  const priv    = document.getElementById('sf-private')?.value || '';
+  const agenda  = document.getElementById('sf-agenda')?.value  || '';
+  if (!date) { toast('Pick a date first'); return; }
+
+  const data = {
+    id:           editingSessionId || null,
+    personId:     currentPersonId,
+    date, wentWell: well, toImprove: improve, privateNotes: priv, nextAgenda: agenda
+  };
+  if (!editingSessionId) {
+    const el = document.getElementById('sf-items');
+    data.actionItemLines = el ? el.value.split('\n') : [];
+  }
+
+  setSyncState('syncing');
+  try {
+    const result = await api('saveSession', { data });
+    await reloadData();
+    setSyncState('synced');
+    toast(editingSessionId ? 'Session updated' : 'Session saved');
+    navigate('session-detail', { sessionId: result.id, editingSessionId: null });
+  } catch(e) { setSyncState('error'); toast('Error: ' + e.message); }
+}
+
+// ── SESSION DETAIL ───────────────────────────────────────────
+function renderSessionDetail() {
+  const s = sessions.find(x => x.id === currentSessionId);
+  if (!s) { navigate('profile'); return; }
+  const p = people.find(x => x.id === s.personId);
+  if (p) currentPersonId = p.id;
+  const items = itemsForSession(s.id);
+
+  setTopbar(
+    backBtn("navigate('profile')"),
+    formatDate(s.date),
+    iconBtn(`navigate('session-form',{editingSessionId:'${esc(s.id)}'})`, SVG_EDIT)
+  );
+
+  function section(label, text, cls) {
+    if (!text || !text.trim()) return '';
+    return `<div class="session-section ${cls}" style="margin-bottom:1.25rem">
+      <label>${label}</label>
+      <div class="section-content">${esc(text)}</div>
+    </div>`;
+  }
+
+  const itemsHtml = items.map(item => `
+    <div class="action-item-row" id="item-row-${esc(item.id)}">
+      <button class="check-btn ${item.status === 'done' ? 'done' : ''}"
+              onclick="toggleItem('${esc(item.id)}')">${SVG_CHECK}</button>
+      <span class="item-text ${item.status === 'done' ? 'done' : ''}">${esc(item.text)}</span>
+      <div class="item-actions">
+        <button class="item-action-btn" onclick="editItem('${esc(item.id)}')">✏</button>
+        <button class="item-action-btn" onclick="confirmDeleteItem('${esc(item.id)}')">✕</button>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('view-session-detail').innerHTML = `
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:1.25rem">
+      ${p ? esc(p.name) + ' · ' : ''}${formatDate(s.date)}
+    </div>
+    ${section('Went Well', s.wentWell, 'section-green')}
+    ${section('To Improve', s.toImprove, 'section-red')}
+    <div class="session-section section-orange" style="margin-bottom:1.25rem">
+      <label>Action Items</label>
+      ${items.length ? itemsHtml : '<div style="color:var(--muted);font-size:.8rem">No action items.</div>'}
+      <div class="add-item-row">
+        <input class="add-item-input" id="new-item-input" placeholder="Add action item…"
+               onkeydown="if(event.key==='Enter')addItemInline()">
+        <button class="add-item-btn" onclick="addItemInline()">+</button>
+      </div>
+    </div>
+    ${section('Private Notes 🔒', s.privateNotes, 'section-blue')}
+    ${s.nextAgenda ? section('Next Agenda', s.nextAgenda, '') : ''}
+  `;
+}
+
+async function addItemInline() {
+  const input = document.getElementById('new-item-input');
+  if (!input || !input.value.trim()) return;
+  const text = input.value.trim();
+  const s    = sessions.find(x => x.id === currentSessionId);
+  if (!s) return;
+  try {
+    const result = await api('addActionItem', { data: { sessionId: s.id, personId: s.personId, text } });
+    actionItems.push({ id: result.id, sessionId: s.id, personId: s.personId, text, status: 'open', createdAt: '' });
+    input.value = '';
+    renderSessionDetail();
+    toast('Item added');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+// ── SEARCH ───────────────────────────────────────────────────
+function renderSearch() {
+  setTopbar('', 'SEARCH', '');
+  document.getElementById('view-search').innerHTML = `
+    <input type="search" id="search-input" placeholder="Search people and sessions…"
+           oninput="onSearchInput(this.value)" autocomplete="off" style="margin-bottom:.875rem">
+    <div id="search-results"></div>
+  `;
+  setTimeout(() => document.getElementById('search-input')?.focus(), 150);
+}
+async function onSearchInput(q) {
+  clearTimeout(searchTimer);
+  if (q.length < 2) { document.getElementById('search-results').innerHTML = ''; return; }
+  searchTimer = setTimeout(async () => {
+    try {
+      const data = await api('search', { query: q });
+      renderSearchResults(data.results || [], q);
+    } catch(e) { console.error(e); }
+  }, 400);
+}
+function renderSearchResults(results, q) {
+  const el = document.getElementById('search-results');
+  if (!el) return;
+  el.innerHTML = results.length
+    ? results.map(r => `
+      <div class="search-result" onclick="openResult('${esc(r.personId)}','${esc(r.sessionId||'')}')">
+        <div class="result-top">
+          <span class="result-name">${highlight(r.personName, q)}</span>
+          ${r.date ? `<span class="result-date">${formatDate(r.date)}</span>` : ''}
+        </div>
+        <div class="result-snippet">${highlight(r.snippet, q)}</div>
+      </div>`).join('')
+    : '<div class="empty-state" style="padding:2rem 0"><div class="empty-text">No results found.</div></div>';
+}
+function openResult(personId, sessionId) {
+  if (sessionId) navigate('session-detail', { personId, sessionId });
+  else           navigate('profile', { personId });
+}
+
+// ── THIS WEEK ────────────────────────────────────────────────
+function renderThisWeek() {
+  setTopbar('', 'THIS WEEK', '');
+  const overdue   = people.filter(isOverdue);
+  const openItems = actionItems.filter(a => a.status === 'open');
+  const nameMap   = Object.fromEntries(people.map(p => [p.id, p.name]));
+
+  const overdueHtml = overdue.length ? `
+    <div class="section-header"><span class="section-title">Overdue Check-ins</span></div>
+    ${overdue.map(p => {
+      const last  = lastSessionFor(p.id);
+      const days  = last ? daysSince(last.date) : null;
+      const color = avatarColor(p.id);
+      return `<div class="card person-card" onclick="navigate('profile',{personId:'${esc(p.id)}'})">
+        <div class="avatar" style="background:${color}20;color:${color}">${esc(initials(p.name))}</div>
+        <div class="person-info">
+          <div class="person-name">${esc(p.name)}</div>
+          <div class="person-sub">${esc(p.cadence)} · ${last ? 'Last ' + timeAgo(last.date) : 'Never met'}</div>
+        </div>
+        <div class="badge-overdue">${days !== null ? days + 'd ' : ''}OVERDUE</div>
+      </div>`;
+    }).join('')}` : '';
+
+  const itemsHtml = openItems.length ? `
+    <div class="section-header" style="margin-top:${overdue.length ? '.5rem' : '0'}">
+      <span class="section-title">Open Action Items</span>
+    </div>
+    <div class="card" style="padding:.75rem 1rem">
+      ${openItems.map(item => `
+        <div class="action-item-row" id="item-row-${esc(item.id)}">
+          <button class="check-btn" onclick="toggleItem('${esc(item.id)}')">${SVG_CHECK}</button>
+          <span class="item-text">${esc(item.text)}</span>
+          <span class="tag-pill" style="margin-left:.5rem">${esc(nameMap[item.personId] || '?')}</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  const empty = (!overdue.length && !openItems.length) ? `
+    <div class="empty-state">
+      <div class="empty-icon">✅</div>
+      <div class="empty-text">All caught up!<br>No overdue check-ins or open items.</div>
+    </div>` : '';
+
+  document.getElementById('view-thisweek').innerHTML = overdueHtml + itemsHtml + empty;
+}
+
+// ── ITEM ACTIONS ─────────────────────────────────────────────
+async function toggleItem(id) {
+  try {
+    const result = await api('toggleActionItem', { id });
+    const item = actionItems.find(a => a.id === id);
+    if (item) item.status = result.status;
+    renderView();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+async function editItem(id) {
+  const item = actionItems.find(a => a.id === id);
+  if (!item) return;
+  const newText = prompt('Edit action item:', item.text);
+  if (newText === null || !newText.trim()) return;
+  try {
+    await api('updateActionItem', { id, text: newText.trim() });
+    item.text = newText.trim();
+    renderView();
+    toast('Item updated');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+function confirmDeleteItem(id) {
+  showConfirm('Delete this action item?', async () => {
+    try {
+      await api('deleteActionItem', { id });
+      actionItems = actionItems.filter(a => a.id !== id);
+      renderView(); toast('Item deleted');
+    } catch(e) { toast('Error: ' + e.message); }
+  });
+}
+function confirmDeleteSession(id) {
+  showConfirm('Delete this session and all its action items?', async () => {
+    try {
+      await api('deleteSession', { id });
+      sessions    = sessions.filter(s => s.id !== id);
+      actionItems = actionItems.filter(a => a.sessionId !== id);
+      toast('Session deleted');
+      navigate('profile');
+    } catch(e) { toast('Error: ' + e.message); }
+  });
+}
+
+// ── PERSON MODAL ─────────────────────────────────────────────
+function openPersonModal(id) {
+  editingPersonId = id || null;
+  const p = id ? people.find(x => x.id === id) : null;
+  document.getElementById('pm-title').textContent      = p ? 'Edit Person' : 'New Person';
+  document.getElementById('pm-name').value             = p ? p.name    : '';
+  document.getElementById('pm-role').value             = p ? p.role    : '';
+  document.getElementById('pm-company').value          = p ? p.company : '';
+  document.getElementById('pm-cadence').value          = p ? p.cadence : 'Weekly';
+  document.getElementById('pm-delete').style.display   = p ? 'block' : 'none';
+  document.getElementById('modal-person').classList.add('open');
+  setTimeout(() => document.getElementById('pm-name').focus(), 150);
+}
+function closePersonModal() { document.getElementById('modal-person').classList.remove('open'); }
+async function savePersonModal() {
+  const name    = document.getElementById('pm-name').value.trim();
+  const role    = document.getElementById('pm-role').value.trim();
+  const company = document.getElementById('pm-company').value.trim();
+  const cadence = document.getElementById('pm-cadence').value;
+  if (!name) { toast('Name is required'); return; }
+  closePersonModal();
+  setSyncState('syncing');
+  try {
+    const data   = { id: editingPersonId || null, name, role, company, cadence };
+    const result = await api('savePerson', { data });
+    await reloadData(); setSyncState('synced');
+    toast(editingPersonId ? 'Person updated' : name + ' added');
+    if (!editingPersonId) navigate('profile', { personId: result.id });
+    else renderView();
+  } catch(e) { setSyncState('error'); toast('Error: ' + e.message); }
+}
+function confirmDeletePerson() {
+  if (!editingPersonId) return;
+  closePersonModal();
+  const p = people.find(x => x.id === editingPersonId);
+  showConfirm(`Delete ${p ? p.name : 'this person'} and all their sessions?`, async () => {
+    try {
+      await api('deletePerson', { id: editingPersonId });
+      await reloadData(); setSyncState('synced');
+      toast('Person deleted'); navigate('home');
+    } catch(e) { toast('Error: ' + e.message); }
+  });
+}
+
+// ── CONFIRM MODAL ─────────────────────────────────────────────
+function showConfirm(msg, cb) {
+  document.getElementById('confirm-msg').textContent = msg;
+  confirmCallback = cb;
+  document.getElementById('modal-confirm').classList.add('open');
+}
+function closeConfirm() { document.getElementById('modal-confirm').classList.remove('open'); confirmCallback = null; }
+function doConfirm()    { closeConfirm(); if (confirmCallback) confirmCallback(); }
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(msg, ms = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+</script>
+
+<script src="https://accounts.google.com/gsi/client" onload="initGIS()" async defer></script>
+</body>
+</html>
